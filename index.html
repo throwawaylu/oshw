@@ -87,7 +87,9 @@
 			<div class="control">
 				Memory allocation algorithm:
 				<select onchange="changeAlgo(this.value)">
-					<option value="0">Default</option>
+					<option value="first" selected>First fit</option>
+					<option value="best">Best fit</option>
+					<option value="worst">Worst fit</option>
 				</select>
 			</div>
 			<div class="control">
@@ -116,15 +118,17 @@
 		
 		<script type="text/javascript">
 			const CELL_SIZE = 10, BORDER_SIZE = 1;
-			const algos = [
-				dumbAlgo
-			];
+			const algos = {
+				"first": firstFitAlgo,
+				"best": bestFitAlgo,
+				"worst": worstFitAlgo
+			};
 			
 			var rows, cols;
 			var totalMemory = 0, usedMemory = 0, freeMemory = 0, maxAlloca = 0;
 			var allocasAlive = 0, successfulAllocas = 0, failedAllocas = 0, totalSize = 0;
 			var memo, allocas = [];
-			var algo = 0;
+			var algo = "first";
 			
 			createTable();
 			updateInfos();
@@ -313,19 +317,54 @@
 				$("#failed_allocas").html(failedAllocas);
 			}
 			
-			function dumbAlgo(size) {
-				var used = 0;
-				for (var i = 0; i < size - 1; i++) {
-					if (memo[i] != -1) used++;
+			function getHoles() {
+				var holes = [];
+				for (var i = 0, s = 0; i <= totalMemory; i++) {
+					if (i == totalMemory || memo[i] != -1) {
+						if (s > 0) {
+							holes.push({start: i - s, size: s});
+						}
+						s = 0;
+					}
+					else s++;
 				}
 				
-				for (var i = 0; i + size <= totalMemory; i++) {
-					if (memo[i + size - 1] != -1) used++;
-					if (used == 0) return i;
-					if (memo[i] != -1) used--;
+				return holes;
+			}
+			
+			function firstFitAlgo(size) {
+				var holes = getHoles();
+				for (var i = 0; i < holes.length; i++) {
+					if (holes[i].size >= size) {
+						return holes[i].start;
+					}
 				}
 				
 				return -1;
+			}
+			
+			function bestFitAlgo(size) {
+				var holes = getHoles(), bestStart = -1, bestSize = totalMemory + 1;
+				for (var i = 0; i < holes.length; i++) {
+					if (holes[i].size >= size && holes[i].size < bestSize) {
+						bestStart = holes[i].start;
+						bestSize = holes[i].size;
+					}
+				}
+				
+				return bestStart;
+			}
+			
+			function worstFitAlgo(size) {
+				var holes = getHoles(), worstStart = -1, worstSize = 0;
+				for (var i = 0; i < holes.length; i++) {
+					if (holes[i].size >= size && holes[i].size > worstSize) {
+						worstStart = holes[i].start;
+						worstSize = holes[i].size;
+					}
+				}
+				
+				return worstStart;
 			}
 		</script>
 	</body>
