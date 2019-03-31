@@ -39,6 +39,11 @@
 				font-size: 20px;
 			}
 			
+			.control_container .info {
+				display: inline-block;
+				width: 30%;
+			}
+			
 			#allocation_container {
 				float: right;
 			}
@@ -66,7 +71,11 @@
 			<div class="info">Total memory: <span id="total_memory" /></div>
 			<div class="info">Used memory: <span id="used_memory" /></div>
 			<div class="info">Free memory: <span id="free_memory" /></div>
-			<div class="info">Maximum allocation size currently available: <span id="max_size" /></div>
+			<div class="info">Allocations alive: <span id="allocas_alive" /></div>
+			<div class="info" style="width: 60%">Maximum allocation size currently available: <span id="max_size" /></div>
+			<div class="info">Successful allocations: <span id="successful_allocas" /></div>
+			<div class="info">Total memory allocated: <span id="total_size" /></div>
+			<div class="info">Failed allocations: <span id="failed_allocas" /></div>
 			<div class="control">
 				Memory management algorithm:
 				<select onchange="changeAlgo(this.value)">
@@ -76,7 +85,16 @@
 			<div class="control">
 				New allocation, size:
 				<input type="number" id="alloca_size" />
-				<button onclick="addAlloca()">allocate</button>
+				<button onclick="addAlloca(null)">allocate</button>
+			</div>
+			<div class="control">
+				New random sized allocation, random iterations:
+				<input type="number" id="random_iter" value="5" />
+				<button onclick="randomAlloca()">allocate</button>
+			</div>
+			<div class="control">
+				Free random alloca:
+				<button onclick="freeAlloca(getRandomAlloca())">free</button>
 			</div>
 		</div>
 		
@@ -91,6 +109,7 @@
 			
 			var rows, cols;
 			var totalMemory = 0, usedMemory = 0, freeMemory = 0, maxAlloca = 0;
+			var allocasAlive = 0, successfulAllocas = 0, failedAllocas = 0, totalSize = 0;
 			var memo, allocas = [];
 			var algo = 0;
 			
@@ -125,9 +144,13 @@
 			
 			function changeAlgo(value) { algo = value; }
 			
-			function addAlloca() {
-				var size = parseInt($("#alloca_size").val());
+			function addAlloca(size) {
+				if (size == null) {
+					size = parseInt($("#alloca_size").val());
+				}
 				if (size > maxAlloca) {
+					failedAllocas++;
+					updateInfos();
 					alert("Error: it is not possible to allocate requested amount of memory!");
 					return;
 				}
@@ -187,7 +210,32 @@
 					$("#m" + (start + i)).css("background-color", color);
 				}
 				
+				successfulAllocas++;
+				allocasAlive++;
+				totalSize += size;
+				
 				updateInfos();
+			}
+			
+			function randomAlloca() {
+				var iters = parseInt($("#random_iter").val());
+				var size = totalMemory;
+				for (var i = 0; i < iters; i++) {
+					size = Math.floor(Math.random() * size) + 1;
+				}
+				addAlloca(size);
+			}
+			
+			function getRandomAlloca() {
+				var ids = [];
+				for (var i = 0; i < allocas.length; i++) {
+					if (allocas[i] != undefined) {
+						ids.push(i);
+					}
+				}
+				
+				if (ids.length == 0) return -1;
+				return ids[Math.floor(Math.random() * ids.length)];
 			}
 			
 			function freeAlloca(id) {
@@ -202,6 +250,7 @@
 				
 				allocas[id].div.remove();
 				allocas[id] = undefined;
+				allocasAlive--;
 				
 				updateInfos();
 			}
@@ -224,6 +273,10 @@
 				$("#used_memory").html(usedMemory);
 				$("#free_memory").html(freeMemory);
 				$("#max_size").html(maxAlloca);
+				$("#total_size").html(totalSize);
+				$("#allocas_alive").html(allocasAlive);
+				$("#successful_allocas").html(successfulAllocas);
+				$("#failed_allocas").html(failedAllocas);
 			}
 			
 			function dumbAlgo(size) {
